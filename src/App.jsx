@@ -285,9 +285,11 @@ const App = () => {
   };
 
   // Handle successful registration
+
   const handleRegister = (data) => {
     console.log('Registered', data);
-    setAuthScreen('login'); // Go to login after registration
+    setIsLoggedIn(true);
+    setAuthScreen(null); // Go to dashboard immediately
   };
 
   // Handle switching between auth screens
