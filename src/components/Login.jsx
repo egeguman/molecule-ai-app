@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, onSwitchToRegister }) => {
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -60,6 +60,17 @@ const Login = ({ onLogin }) => {
                         Sign In
                     </button>
                 </form>
+
+                <div style={styles.switchSection}>
+                    <span style={styles.switchText}>Don't have an account?</span>
+                    <button
+                        type="button"
+                        style={styles.switchButton}
+                        onClick={onSwitchToRegister}
+                    >
+                        Create Account
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -139,6 +150,31 @@ const styles = {
         cursor: 'pointer',
         transition: 'background-color 0.2s ease',
         fontFamily: "'DM Sans', sans-serif",
+    },
+    switchSection: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '8px',
+        marginTop: '24px',
+        paddingTop: '20px',
+        borderTop: '1px solid #f3f4f6',
+    },
+    switchText: {
+        fontSize: '14px',
+        color: '#6b7280',
+        fontFamily: "'DM Sans', sans-serif",
+    },
+    switchButton: {
+        fontSize: '14px',
+        fontWeight: '600',
+        color: '#16a34a',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        fontFamily: "'DM Sans', sans-serif",
+        padding: 0,
+        transition: 'color 0.2s ease',
     }
 };
 

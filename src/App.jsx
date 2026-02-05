@@ -12,6 +12,8 @@ const App = () => {
 
   const styles = getStyles(theme);
   const [showIntro, setShowIntro] = useState(true);
+  const [authScreen, setAuthScreen] = useState(null); // 'register', 'login', or null (dashboard)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [smilesInput, setSmilesInput] = useState('');
   const [promptInput, setPromptInput] = useState('');
   const [currentMolecules, setCurrentMolecules] = useState([]);
@@ -95,6 +97,36 @@ const App = () => {
   // Handle getting started from intro page
   const handleGetStarted = () => {
     setShowIntro(false);
+    setAuthScreen('register'); // Show register screen after intro
+  };
+
+  // Handle successful login
+  const handleLogin = (data) => {
+    console.log('Logged in', data);
+    setIsLoggedIn(true);
+    setAuthScreen(null); // Go to dashboard
+  };
+
+  // Handle successful registration
+  const handleRegister = (data) => {
+    console.log('Registered', data);
+    setAuthScreen('login'); // Go to login after registration
+  };
+
+  // Handle switching between auth screens
+  const handleSwitchToLogin = () => {
+    setAuthScreen('login');
+  };
+
+  const handleSwitchToRegister = () => {
+    setAuthScreen('register');
+  };
+
+  // Handle exit/logout from dashboard
+  const handleExit = () => {
+    setIsLoggedIn(false);
+    setShowIntro(true);
+    setAuthScreen(null);
   };
 
   // If showing intro page, render the landing page
@@ -354,6 +386,41 @@ const App = () => {
     );
   }
 
+  // If showing auth screen (register or login)
+  if (authScreen) {
+    return (
+      <div style={styles.authContainer}>
+        {/* Background with gradient */}
+        <div style={introStyles.backgroundGradient}></div>
+        <div style={introStyles.backgroundOrbs}>
+          <div style={introStyles.orb1}></div>
+          <div style={introStyles.orb2}></div>
+          <div style={introStyles.orb3}></div>
+        </div>
+
+        {/* Back to intro button */}
+        <button
+          style={styles.backToIntroButton}
+          onClick={() => { setShowIntro(true); setAuthScreen(null); }}
+        >
+          ← Back to Home
+        </button>
+
+        {authScreen === 'register' ? (
+          <Register
+            onRegister={handleRegister}
+            onSwitchToLogin={handleSwitchToLogin}
+          />
+        ) : (
+          <Login
+            onLogin={handleLogin}
+            onSwitchToRegister={handleSwitchToRegister}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -398,16 +465,15 @@ const App = () => {
           </button>
           <div style={styles.navDivider}></div>
           <button
-            style={{ ...styles.navButton, ...(activeTab === 'login' ? styles.navButtonActive : {}) }}
-            onClick={() => setActiveTab('login')}
+            style={styles.exitButton}
+            onClick={handleExit}
           >
-            Login
-          </button>
-          <button
-            style={{ ...styles.navButton, ...(activeTab === 'register' ? styles.navButtonActive : {}) }}
-            onClick={() => setActiveTab('register')}
-          >
-            Register
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Exit
           </button>
           <button
             style={styles.themeToggle}
@@ -873,21 +939,6 @@ const App = () => {
           </div>
         )}
 
-        {/* Login Tab */}
-        {activeTab === 'login' && (
-          <Login onLogin={(data) => {
-            console.log('Logged in', data);
-            setActiveTab('input');
-          }} />
-        )}
-
-        {/* Register Tab */}
-        {activeTab === 'register' && (
-          <Register onRegister={(data) => {
-            console.log('Registered', data);
-            setActiveTab('login');
-          }} />
-        )}
       </main>
 
       {/* Footer */}
@@ -1019,6 +1070,46 @@ const getStyles = (theme) => {
       height: '24px',
       margin: '0 8px',
       alignSelf: 'center',
+    },
+    authContainer: {
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      overflow: 'hidden',
+      backgroundColor: '#0a0a0a',
+    },
+    backToIntroButton: {
+      position: 'absolute',
+      top: '24px',
+      left: '24px',
+      padding: '10px 20px',
+      fontSize: '14px',
+      fontWeight: '500',
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      color: '#ffffff',
+      fontFamily: "'DM Sans', sans-serif",
+      zIndex: 10,
+    },
+    exitButton: {
+      display: 'flex',
+      alignItems: 'center',
+      padding: '10px 20px',
+      fontSize: '14px',
+      fontWeight: '500',
+      backgroundColor: '#fee2e2',
+      border: '1px solid #fecaca',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+      color: '#dc2626',
+      fontFamily: "'DM Sans', sans-serif",
     },
     main: {
       flex: 1,
