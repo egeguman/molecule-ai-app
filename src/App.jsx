@@ -8,6 +8,7 @@ const App = () => {
   const [analysisRequests, setAnalysisRequests] = useState([]);
   const [activeTab, setActiveTab] = useState('input');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [identifierType, setIdentifierType] = useState('smiles'); // 'smiles', 'chembl', or 'name'
 
   const handleAddMolecule = () => {
     if (smilesInput.trim()) {
@@ -15,6 +16,8 @@ const App = () => {
         id: Date.now() + Math.random(),
         smiles: smilesInput.trim(),
         name: `Molecule ${currentMolecules.length + 1}`,
+        identifierType: identifierType,
+        identifierValue: smilesInput.trim(),
       };
       setCurrentMolecules(prev => [...prev, newMolecule]);
       setSmilesInput('');
@@ -135,17 +138,38 @@ const App = () => {
                 <h2 style={styles.cardTitle}>Create Analysis Request</h2>
               </div>
 
-              {/* SMILES Input Area */}
+              {/* Molecule Identifier Input Area */}
               <div style={styles.smilesSection}>
                 <div style={styles.sectionHeader}>
-                  <span style={styles.sectionTitle}>1. Add Molecules (SMILES)</span>
+                  <span style={styles.sectionTitle}>1. Add Molecules</span>
                 </div>
 
+                {/* Identifier Type Dropdown */}
+                <div style={styles.identifierTypeSection}>
+                  <label style={styles.dropdownLabel}>Identifier Type:</label>
+                  <select
+                    value={identifierType}
+                    onChange={(e) => setIdentifierType(e.target.value)}
+                    style={styles.dropdown}
+                  >
+                    <option value="smiles">SMILES</option>
+                    <option value="chembl">ChEMBL ID</option>
+                    <option value="name">Molecule Name</option>
+                  </select>
+                </div>
+
+                {/* Dynamic Input Field */}
                 <input
                   type="text"
                   value={smilesInput}
                   onChange={(e) => setSmilesInput(e.target.value)}
-                  placeholder="Enter SMILES code and press Enter (e.g., CC(=O)OC1=CC=CC=C1C(=O)O)"
+                  placeholder={
+                    identifierType === 'smiles'
+                      ? 'Enter SMILES code and press Enter (e.g., CC(=O)OC1=CC=CC=C1C(=O)O)'
+                      : identifierType === 'chembl'
+                        ? 'Enter ChEMBL ID and press Enter (e.g., CHEMBL25)'
+                        : 'Enter Molecule Name and press Enter (e.g., Aspirin)'
+                  }
                   style={styles.smilesInputFieldFull}
                   onKeyPress={(e) => e.key === 'Enter' && handleAddMolecule()}
                 />
@@ -161,6 +185,8 @@ const App = () => {
                           id: Date.now() + Math.random(),
                           smiles: ex.smiles,
                           name: ex.name,
+                          identifierType: 'smiles',
+                          identifierValue: ex.smiles,
                         };
                         setCurrentMolecules([...currentMolecules, newMolecule]);
                       }}
@@ -178,7 +204,16 @@ const App = () => {
                         <span style={styles.moleculeTagIndex}>{index + 1}</span>
                         <div style={styles.moleculeTagContent}>
                           <span style={styles.moleculeTagName}>{mol.name}</span>
-                          <code style={styles.moleculeTagSmiles}>{mol.smiles}</code>
+                          <div style={styles.moleculeTagIdentifier}>
+                            <span style={styles.moleculeTagType}>
+                              {mol.identifierType === 'smiles' ? 'SMILES' :
+                                mol.identifierType === 'chembl' ? 'ChEMBL ID' :
+                                  'Name'}:
+                            </span>
+                            <code style={styles.moleculeTagSmiles}>
+                              {mol.identifierValue || mol.smiles}
+                            </code>
+                          </div>
                         </div>
                         <button
                           style={styles.moleculeTagRemove}
@@ -684,6 +719,29 @@ const styles = {
     padding: '2px 8px',
     borderRadius: '10px',
   },
+  identifierTypeSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '12px',
+  },
+  dropdownLabel: {
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#374151',
+  },
+  dropdown: {
+    padding: '8px 12px',
+    fontSize: '14px',
+    fontFamily: "'DM Sans', sans-serif",
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    backgroundColor: '#ffffff',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    color: '#111827',
+    fontWeight: '500',
+  },
   smilesInputFieldFull: {
     width: '100%',
     padding: '12px 16px',
@@ -760,10 +818,21 @@ const styles = {
     fontSize: '11px',
     fontFamily: "'JetBrains Mono', monospace",
     color: '#6b7280',
-    display: 'block',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  moleculeTagIdentifier: {
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center',
+  },
+  moleculeTagType: {
+    fontSize: '10px',
+    fontWeight: '600',
+    color: '#16a34a',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
   moleculeTagRemove: {
     width: '24px',
