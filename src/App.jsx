@@ -14,6 +14,183 @@ const App = () => {
   const [showIntro, setShowIntro] = useState(true);
   const [authScreen, setAuthScreen] = useState(null); // 'register', 'login', or null (dashboard)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Featured molecules for intro page display
+  const featuredMolecules = [
+    {
+      name: 'Caffeine',
+      formula: 'C8H10N4O2',
+      description: 'Central nervous system stimulant',
+      structure: {
+        bonds: [
+          { x1: 140, y1: 140, x2: 90, y2: 80, width: 3 },
+          { x1: 140, y1: 140, x2: 190, y2: 80, width: 3 },
+          { x1: 140, y1: 140, x2: 70, y2: 160, width: 3 },
+          { x1: 140, y1: 140, x2: 210, y2: 160, width: 3 },
+          { x1: 140, y1: 140, x2: 100, y2: 220, width: 3 },
+          { x1: 140, y1: 140, x2: 180, y2: 220, width: 3 },
+          { x1: 90, y1: 80, x2: 50, y2: 50, width: 2.5 },
+          { x1: 190, y1: 80, x2: 230, y2: 50, width: 2.5 },
+          { x1: 70, y1: 160, x2: 30, y2: 180, width: 2.5 },
+          { x1: 210, y1: 160, x2: 250, y2: 180, width: 2.5 },
+        ],
+        atoms: [
+          { cx: 140, cy: 140, r: 20, color: '#22c55e', label: 'C', fontSize: 14 },
+          { cx: 90, cy: 80, r: 14, color: '#22c55e', label: 'C', fontSize: 11 },
+          { cx: 190, cy: 80, r: 14, color: '#22c55e', label: 'C', fontSize: 11 },
+          { cx: 70, cy: 160, r: 12, color: '#3b82f6', label: 'N', fontSize: 10 },
+          { cx: 210, cy: 160, r: 12, color: '#3b82f6', label: 'N', fontSize: 10 },
+          { cx: 100, cy: 220, r: 10, color: '#ef4444', label: 'O', fontSize: 9 },
+          { cx: 180, cy: 220, r: 10, color: '#ef4444', label: 'O', fontSize: 9 },
+          { cx: 50, cy: 50, r: 8, color: '#16a34a', label: '', fontSize: 0, opacity: 0.7 },
+          { cx: 230, cy: 50, r: 8, color: '#16a34a', label: '', fontSize: 0, opacity: 0.7 },
+          { cx: 30, cy: 180, r: 7, color: '#3b82f6', label: '', fontSize: 0, opacity: 0.6 },
+          { cx: 250, cy: 180, r: 7, color: '#3b82f6', label: '', fontSize: 0, opacity: 0.6 },
+        ]
+      }
+    },
+    {
+      name: 'Aspirin',
+      formula: 'C9H8O4',
+      description: 'Anti-inflammatory and analgesic',
+      structure: {
+        bonds: [
+          { x1: 140, y1: 140, x2: 100, y2: 100, width: 3 },
+          { x1: 100, y1: 100, x2: 140, y2: 60, width: 3 },
+          { x1: 140, y1: 60, x2: 180, y2: 60, width: 3 },
+          { x1: 180, y1: 60, x2: 220, y2: 100, width: 3 },
+          { x1: 220, y1: 100, x2: 180, y2: 140, width: 3 },
+          { x1: 180, y1: 140, x2: 140, y2: 140, width: 3 },
+          { x1: 100, y1: 100, x2: 60, y2: 80, width: 2.5 },
+          { x1: 60, y1: 80, x2: 40, y2: 100, width: 2.5 },
+          { x1: 220, y1: 100, x2: 250, y2: 80, width: 2.5 },
+          { x1: 250, y1: 80, x2: 260, y2: 60, width: 2.5 },
+          { x1: 180, y1: 140, x2: 200, y2: 180, width: 2.5 },
+        ],
+        atoms: [
+          { cx: 140, cy: 140, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 100, cy: 100, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 140, cy: 60, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 180, cy: 60, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 220, cy: 100, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 180, cy: 140, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 60, cy: 80, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+          { cx: 40, cy: 100, r: 10, color: '#22c55e', label: 'C', fontSize: 9 },
+          { cx: 250, cy: 80, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+          { cx: 260, cy: 60, r: 10, color: '#ef4444', label: 'O', fontSize: 9 },
+          { cx: 200, cy: 180, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+        ]
+      }
+    },
+    {
+      name: 'Dopamine',
+      formula: 'C8H11NO2',
+      description: 'Neurotransmitter',
+      structure: {
+        bonds: [
+          { x1: 140, y1: 120, x2: 110, y2: 90, width: 3 },
+          { x1: 110, y1: 90, x2: 110, y2: 50, width: 3 },
+          { x1: 110, y1: 50, x2: 150, y2: 30, width: 3 },
+          { x1: 150, y1: 30, x2: 190, y2: 50, width: 3 },
+          { x1: 190, y1: 50, x2: 190, y2: 90, width: 3 },
+          { x1: 190, y1: 90, x2: 150, y2: 110, width: 3 },
+          { x1: 150, y1: 110, x2: 140, y2: 120, width: 2.5 },
+          { x1: 140, y1: 120, x2: 140, y2: 160, width: 2.5 },
+          { x1: 140, y1: 160, x2: 140, y2: 200, width: 2.5 },
+          { x1: 140, y1: 200, x2: 170, y2: 230, width: 2.5 },
+          { x1: 110, y1: 50, x2: 80, y2: 30, width: 2.5 },
+          { x1: 190, y1: 50, x2: 220, y2: 30, width: 2.5 },
+        ],
+        atoms: [
+          { cx: 140, cy: 120, r: 14, color: '#22c55e', label: 'C', fontSize: 11 },
+          { cx: 110, cy: 90, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 110, cy: 50, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 150, cy: 30, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 190, cy: 50, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 190, cy: 90, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 150, cy: 110, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 140, cy: 160, r: 14, color: '#22c55e', label: 'C', fontSize: 11 },
+          { cx: 140, cy: 200, r: 14, color: '#22c55e', label: 'C', fontSize: 11 },
+          { cx: 170, cy: 230, r: 12, color: '#3b82f6', label: 'N', fontSize: 10 },
+          { cx: 80, cy: 30, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+          { cx: 220, cy: 30, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+        ]
+      }
+    },
+    {
+      name: 'Penicillin',
+      formula: 'C16H18N2O4S',
+      description: 'Antibiotic',
+      structure: {
+        bonds: [
+          { x1: 140, y1: 140, x2: 100, y2: 120, width: 3 },
+          { x1: 100, y1: 120, x2: 80, y2: 160, width: 3 },
+          { x1: 80, y1: 160, x2: 120, y2: 180, width: 3 },
+          { x1: 120, y1: 180, x2: 140, y2: 140, width: 3 },
+          { x1: 140, y1: 140, x2: 180, y2: 120, width: 3 },
+          { x1: 180, y1: 120, x2: 220, y2: 140, width: 3 },
+          { x1: 220, y1: 140, x2: 200, y2: 180, width: 3 },
+          { x1: 100, y1: 120, x2: 80, y2: 80, width: 2.5 },
+          { x1: 180, y1: 120, x2: 200, y2: 80, width: 2.5 },
+          { x1: 120, y1: 180, x2: 120, y2: 220, width: 2.5 },
+          { x1: 220, y1: 140, x2: 260, y2: 140, width: 2.5 },
+        ],
+        atoms: [
+          { cx: 140, cy: 140, r: 18, color: '#22c55e', label: 'C', fontSize: 13 },
+          { cx: 100, cy: 120, r: 14, color: '#3b82f6', label: 'N', fontSize: 11 },
+          { cx: 80, cy: 160, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 120, cy: 180, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 180, cy: 120, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 220, cy: 140, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 200, cy: 180, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+          { cx: 80, cy: 80, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+          { cx: 200, cy: 80, r: 14, color: '#f59e0b', label: 'S', fontSize: 11 },
+          { cx: 120, cy: 220, r: 12, color: '#3b82f6', label: 'N', fontSize: 10 },
+          { cx: 260, cy: 140, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+        ]
+      }
+    },
+    {
+      name: 'Serotonin',
+      formula: 'C10H12N2O',
+      description: 'Mood regulator neurotransmitter',
+      structure: {
+        bonds: [
+          { x1: 140, y1: 100, x2: 110, y2: 70, width: 3 },
+          { x1: 110, y1: 70, x2: 130, y2: 40, width: 3 },
+          { x1: 130, y1: 40, x2: 170, y2: 40, width: 3 },
+          { x1: 170, y1: 40, x2: 190, y2: 70, width: 3 },
+          { x1: 190, y1: 70, x2: 170, y2: 100, width: 3 },
+          { x1: 170, y1: 100, x2: 140, y2: 100, width: 3 },
+          { x1: 140, y1: 100, x2: 120, y2: 130, width: 2.5 },
+          { x1: 120, y1: 130, x2: 140, y2: 160, width: 2.5 },
+          { x1: 140, y1: 160, x2: 140, y2: 200, width: 2.5 },
+          { x1: 140, y1: 200, x2: 170, y2: 230, width: 2.5 },
+          { x1: 170, y1: 40, x2: 190, y2: 20, width: 2.5 },
+          { x1: 120, y1: 130, x2: 90, y2: 140, width: 2.5 },
+        ],
+        atoms: [
+          { cx: 140, cy: 100, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 110, cy: 70, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 130, cy: 40, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 170, cy: 40, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 190, cy: 70, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 170, cy: 100, r: 16, color: '#22c55e', label: 'C', fontSize: 12 },
+          { cx: 120, cy: 130, r: 14, color: '#3b82f6', label: 'N', fontSize: 11 },
+          { cx: 140, cy: 160, r: 14, color: '#22c55e', label: 'C', fontSize: 11 },
+          { cx: 140, cy: 200, r: 14, color: '#22c55e', label: 'C', fontSize: 11 },
+          { cx: 170, cy: 230, r: 12, color: '#3b82f6', label: 'N', fontSize: 10 },
+          { cx: 190, cy: 20, r: 12, color: '#ef4444', label: 'O', fontSize: 10 },
+          { cx: 90, cy: 140, r: 10, color: '#22c55e', label: 'C', fontSize: 9 },
+        ]
+      }
+    }
+  ];
+
+  // Select a random molecule on component mount
+  const [selectedMolecule] = useState(() => {
+    return featuredMolecules[Math.floor(Math.random() * featuredMolecules.length)];
+  });
   const [smilesInput, setSmilesInput] = useState('');
   const [promptInput, setPromptInput] = useState('');
   const [currentMolecules, setCurrentMolecules] = useState([]);
@@ -201,7 +378,7 @@ const App = () => {
               <div style={introStyles.moleculeCard}>
                 <div style={introStyles.moleculeGlow}></div>
                 <svg width="280" height="280" viewBox="0 0 280 280" style={introStyles.moleculeSvg}>
-                  {/* Central complex molecule structure */}
+                  {/* Gradients and filters */}
                   <defs>
                     <linearGradient id="atomGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#22c55e" />
@@ -221,42 +398,48 @@ const App = () => {
                   </defs>
 
                   {/* Bonds */}
-                  <line x1="140" y1="140" x2="90" y2="80" stroke="url(#bondGradient)" strokeWidth="3" opacity="0.8" />
-                  <line x1="140" y1="140" x2="190" y2="80" stroke="url(#bondGradient)" strokeWidth="3" opacity="0.8" />
-                  <line x1="140" y1="140" x2="70" y2="160" stroke="url(#bondGradient)" strokeWidth="3" opacity="0.8" />
-                  <line x1="140" y1="140" x2="210" y2="160" stroke="url(#bondGradient)" strokeWidth="3" opacity="0.8" />
-                  <line x1="140" y1="140" x2="100" y2="220" stroke="url(#bondGradient)" strokeWidth="3" opacity="0.8" />
-                  <line x1="140" y1="140" x2="180" y2="220" stroke="url(#bondGradient)" strokeWidth="3" opacity="0.8" />
-                  <line x1="90" y1="80" x2="50" y2="50" stroke="url(#bondGradient)" strokeWidth="2.5" opacity="0.6" />
-                  <line x1="190" y1="80" x2="230" y2="50" stroke="url(#bondGradient)" strokeWidth="2.5" opacity="0.6" />
-                  <line x1="70" y1="160" x2="30" y2="180" stroke="url(#bondGradient)" strokeWidth="2.5" opacity="0.6" />
-                  <line x1="210" y1="160" x2="250" y2="180" stroke="url(#bondGradient)" strokeWidth="2.5" opacity="0.6" />
+                  {selectedMolecule.structure.bonds.map((bond, idx) => (
+                    <line
+                      key={`bond-${idx}`}
+                      x1={bond.x1}
+                      y1={bond.y1}
+                      x2={bond.x2}
+                      y2={bond.y2}
+                      stroke="url(#bondGradient)"
+                      strokeWidth={bond.width}
+                      opacity={bond.width > 2.5 ? "0.8" : "0.6"}
+                    />
+                  ))}
 
                   {/* Atoms */}
-                  <circle cx="140" cy="140" r="20" fill="url(#atomGradient)" filter="url(#glow)" />
-                  <circle cx="90" cy="80" r="14" fill="url(#atomGradient)" filter="url(#glow)" />
-                  <circle cx="190" cy="80" r="14" fill="url(#atomGradient)" filter="url(#glow)" />
-                  <circle cx="70" cy="160" r="12" fill="#3b82f6" filter="url(#glow)" />
-                  <circle cx="210" cy="160" r="12" fill="#3b82f6" filter="url(#glow)" />
-                  <circle cx="100" cy="220" r="10" fill="#ef4444" filter="url(#glow)" />
-                  <circle cx="180" cy="220" r="10" fill="#ef4444" filter="url(#glow)" />
-                  <circle cx="50" cy="50" r="8" fill="#16a34a" opacity="0.7" />
-                  <circle cx="230" cy="50" r="8" fill="#16a34a" opacity="0.7" />
-                  <circle cx="30" cy="180" r="7" fill="#3b82f6" opacity="0.6" />
-                  <circle cx="250" cy="180" r="7" fill="#3b82f6" opacity="0.6" />
-
-                  {/* Atom labels */}
-                  <text x="140" y="145" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">C</text>
-                  <text x="90" y="84" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">C</text>
-                  <text x="190" y="84" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">C</text>
-                  <text x="70" y="164" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">N</text>
-                  <text x="210" y="164" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">N</text>
-                  <text x="100" y="224" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">O</text>
-                  <text x="180" y="224" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">O</text>
+                  {selectedMolecule.structure.atoms.map((atom, idx) => (
+                    <g key={`atom-${idx}`}>
+                      <circle
+                        cx={atom.cx}
+                        cy={atom.cy}
+                        r={atom.r}
+                        fill={atom.color}
+                        filter="url(#glow)"
+                        opacity={atom.opacity || 1}
+                      />
+                      {atom.label && (
+                        <text
+                          x={atom.cx}
+                          y={atom.cy + atom.fontSize / 3}
+                          textAnchor="middle"
+                          fill="white"
+                          fontSize={atom.fontSize}
+                          fontWeight="bold"
+                        >
+                          {atom.label}
+                        </text>
+                      )}
+                    </g>
+                  ))}
                 </svg>
                 <div style={introStyles.moleculeLabel}>
-                  <span style={introStyles.moleculeName}>Caffeine</span>
-                  <code style={introStyles.moleculeSmiles}>C8H10N4O2</code>
+                  <span style={introStyles.moleculeName}>{selectedMolecule.name}</span>
+                  <code style={introStyles.moleculeSmiles}>{selectedMolecule.formula}</code>
                 </div>
               </div>
             </div>
