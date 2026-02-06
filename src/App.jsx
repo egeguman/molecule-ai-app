@@ -626,7 +626,7 @@ const App = () => {
           </div>
           <div>
             <h1 style={styles.logoTitle}>MoleculeAI</h1>
-            <p style={styles.logoSubtitle}>Drug Discovery Platform</p>
+            <p style={styles.logoSubtitle}>AI Powered Drug Discovery</p>
           </div>
         </div>
         <nav style={styles.nav}>
