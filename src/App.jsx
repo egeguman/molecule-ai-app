@@ -707,13 +707,25 @@ const App = () => {
           </button>
           <div style={styles.navDivider}></div>
           {currentUser && (
-            <span style={{
+            <div style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              alignSelf: 'center',
+              marginRight: "5px",
               fontSize: '13px',
-              color: theme === 'dark' ? '#d1d5db' : '#6b7280',
+              fontWeight: '700',
+              color: '#ffffff',
               fontFamily: "'DM Sans', sans-serif",
+              letterSpacing: '0.5px',
+              flexShrink: 0,
             }}>
-              {currentUser.first_name} {currentUser.last_name}
-            </span>
+              {currentUser.first_name?.[0]}{currentUser.last_name?.[0]}
+            </div>
           )}
           <button
             style={styles.exitButton}
