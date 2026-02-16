@@ -716,7 +716,7 @@ const App = () => {
               alignItems: 'center',
               justifyContent: 'center',
               alignSelf: 'center',
-              marginRight: "5px",
+              marginRight: "7px",
               fontSize: '13px',
               fontWeight: '700',
               color: '#ffffff',
