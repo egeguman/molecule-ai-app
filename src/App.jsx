@@ -14,6 +14,30 @@ const App = () => {
   const [showIntro, setShowIntro] = useState(true);
   const [authScreen, setAuthScreen] = useState(null); // 'register', 'login', or null (dashboard)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Auto-login: check for existing token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Token expired');
+          return res.json();
+        })
+        .then(data => {
+          setCurrentUser(data.user);
+          setIsLoggedIn(true);
+          setShowIntro(false);
+          setAuthScreen(null);
+        })
+        .catch(() => {
+          localStorage.removeItem('token');
+        });
+    }
+  }, []);
 
   // Featured molecules for intro page display
   const featuredMolecules = [
@@ -200,13 +224,20 @@ const App = () => {
   const [identifierType, setIdentifierType] = useState('smiles'); // 'smiles', 'chembl', or 'name'
 
   const handleAddMolecule = () => {
-    if (smilesInput.trim()) {
+    const trimmed = smilesInput.trim();
+    if (trimmed) {
+      // Check for duplicate SMILES
+      if (currentMolecules.some(m => m.smiles === trimmed)) {
+        return;
+      }
+      // Match against known example molecules for a friendly name
+      const knownName = exampleSmiles.find(ex => ex.smiles === trimmed)?.name;
       const newMolecule = {
         id: Date.now() + Math.random(),
-        smiles: smilesInput.trim(),
-        name: `Molecule ${currentMolecules.length + 1}`,
-        identifierType: identifierType,
-        identifierValue: smilesInput.trim(),
+        smiles: trimmed,
+        name: knownName || `Molecule ${currentMolecules.length + 1}`,
+        identifierType: 'smiles',
+        identifierValue: trimmed,
       };
       setCurrentMolecules(prev => [...prev, newMolecule]);
       setSmilesInput('');
@@ -236,24 +267,49 @@ const App = () => {
     setAnalysisRequests(prev => prev.filter(r => r.id !== id));
   };
 
-  const handleAnalyzeRequest = (request) => {
+  const handleAnalyzeRequest = async (request) => {
     setIsAnalyzing(true);
-    setTimeout(() => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          smiles: request.molecules.map(m => m.smiles),
+          prompt: request.prompt,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Prediction failed');
+
       setAnalysisRequests(prev => prev.map(r =>
-        r.id === request.id ? { ...r, status: 'completed' } : r
+        r.id === request.id
+          ? { ...r, status: 'completed', results: data }
+          : r
       ));
-      setIsAnalyzing(false);
       setActiveTab('results');
-    }, 2000);
+    } catch (err) {
+      console.error('Analysis failed:', err);
+      setAnalysisRequests(prev => prev.map(r =>
+        r.id === request.id
+          ? { ...r, status: 'error', error: err.message }
+          : r
+      ));
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const handleAnalyzeAll = () => {
+  const handleAnalyzeAll = async () => {
     setIsAnalyzing(true);
-    setTimeout(() => {
-      setAnalysisRequests(prev => prev.map(r => ({ ...r, status: 'completed' })));
-      setIsAnalyzing(false);
-      setActiveTab('results');
-    }, 2000);
+    const pending = analysisRequests.filter(r => r.status === 'pending');
+    for (const request of pending) {
+      await handleAnalyzeRequest(request);
+    }
+    setIsAnalyzing(false);
   };
 
   const exampleSmiles = [
@@ -277,19 +333,18 @@ const App = () => {
     setAuthScreen('register'); // Show register screen after intro
   };
 
-  // Handle successful login
-  const handleLogin = (data) => {
-    console.log('Logged in', data);
+  // Handle successful login (receives user object from Login component)
+  const handleLogin = (user) => {
+    setCurrentUser(user);
     setIsLoggedIn(true);
-    setAuthScreen(null); // Go to dashboard
+    setAuthScreen(null);
   };
 
-  // Handle successful registration
-
-  const handleRegister = (data) => {
-    console.log('Registered', data);
+  // Handle successful registration (receives user object from Register component)
+  const handleRegister = (user) => {
+    setCurrentUser(user);
     setIsLoggedIn(true);
-    setAuthScreen(null); // Go to dashboard immediately
+    setAuthScreen(null);
   };
 
   // Handle switching between auth screens
@@ -303,6 +358,8 @@ const App = () => {
 
   // Handle exit/logout from dashboard
   const handleExit = () => {
+    localStorage.removeItem('token');
+    setCurrentUser(null);
     setIsLoggedIn(false);
     setShowIntro(true);
     setAuthScreen(null);
@@ -649,6 +706,15 @@ const App = () => {
             Results
           </button>
           <div style={styles.navDivider}></div>
+          {currentUser && (
+            <span style={{
+              fontSize: '13px',
+              color: theme === 'dark' ? '#d1d5db' : '#6b7280',
+              fontFamily: "'DM Sans', sans-serif",
+            }}>
+              {currentUser.first_name} {currentUser.last_name}
+            </span>
+          )}
           <button
             style={styles.exitButton}
             onClick={handleExit}
@@ -658,7 +724,7 @@ const App = () => {
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            Exit
+            Sign Out
           </button>
           <button
             style={styles.themeToggle}
@@ -711,23 +777,17 @@ const App = () => {
                     style={styles.dropdown}
                   >
                     <option value="smiles">SMILES</option>
-                    <option value="chembl">ChEMBL ID</option>
-                    <option value="name">Molecule Name</option>
+                    <option value="chembl" disabled>ChEMBL ID (coming soon)</option>
+                    <option value="name" disabled>Molecule Name (coming soon)</option>
                   </select>
                 </div>
 
-                {/* Dynamic Input Field */}
+                {/* SMILES Input Field */}
                 <input
                   type="text"
                   value={smilesInput}
                   onChange={(e) => setSmilesInput(e.target.value)}
-                  placeholder={
-                    identifierType === 'smiles'
-                      ? 'Enter SMILES code and press Enter (e.g., CC(=O)OC1=CC=CC=C1C(=O)O)'
-                      : identifierType === 'chembl'
-                        ? 'Enter ChEMBL ID and press Enter (e.g., CHEMBL25)'
-                        : 'Enter Molecule Name and press Enter (e.g., Aspirin)'
-                  }
+                  placeholder="Enter SMILES notation and press Enter (e.g., CC(=O)OC1=CC=CC=C1C(=O)O)"
                   style={styles.smilesInputFieldFull}
                   onKeyPress={(e) => e.key === 'Enter' && handleAddMolecule()}
                 />
@@ -1085,37 +1145,470 @@ const App = () => {
                       </div>
 
                       {/* Results Section */}
-                      <div style={styles.resultMetrics}>
-                        <div style={styles.metricCard}>
-                          <span style={styles.metricLabel}>Drug-likeness</span>
-                          <span style={styles.metricValue}>0.85</span>
-                          <div style={styles.progressBar}>
-                            <div style={{ ...styles.progressFill, width: '85%' }}></div>
-                          </div>
-                        </div>
-                        <div style={styles.metricCard}>
-                          <span style={styles.metricLabel}>Toxicity Risk</span>
-                          <span style={styles.metricValue}>Low</span>
-                          <div style={styles.progressBar}>
-                            <div style={{ ...styles.progressFill, width: '20%', backgroundColor: '#16a34a' }}></div>
-                          </div>
-                        </div>
-                        <div style={styles.metricCard}>
-                          <span style={styles.metricLabel}>Solubility</span>
-                          <span style={styles.metricValue}>High</span>
-                          <div style={styles.progressBar}>
-                            <div style={{ ...styles.progressFill, width: '78%' }}></div>
-                          </div>
-                        </div>
-                      </div>
+                      {request.results ? (
+                        <div>
+                          {/* Mock mode banner */}
+                          {request.results.mock_mode && (
+                            <div style={{
+                              padding: '8px 16px',
+                              backgroundColor: theme === 'dark' ? '#422006' : '#fef3c7',
+                              color: theme === 'dark' ? '#fbbf24' : '#92400e',
+                              borderRadius: '8px',
+                              fontSize: '13px',
+                              marginBottom: '16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                            }}>
+                              <span>⚠</span>
+                              <span>Mock Mode — predictions are simulated. Train models or configure API key for real results.</span>
+                            </div>
+                          )}
 
-                      <div style={styles.resultInsight}>
-                        <span style={styles.insightLabel}>AI Insight (Preview)</span>
-                        <p style={styles.insightText}>
-                          Based on the molecular structures provided, the analysis indicates favorable drug-like properties.
-                          Connect to backend for detailed comparison results.
-                        </p>
-                      </div>
+                          {/* ADMET Results per molecule */}
+                          {Object.entries(request.results.predictions).map(([smiles, endpoints]) => (
+                            <div key={smiles} style={{ marginBottom: '24px' }}>
+                              <div style={{
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: theme === 'dark' ? '#e5e7eb' : '#1f2937',
+                                marginBottom: '12px',
+                                fontFamily: 'JetBrains Mono, monospace',
+                              }}>
+                                {smiles}
+                              </div>
+
+                              {/* Group endpoints by category */}
+                              {['absorption', 'distribution', 'metabolism', 'excretion', 'toxicity'].map(group => {
+                                const groupEndpoints = Object.entries(endpoints).filter(([, d]) => d.group === group);
+                                if (groupEndpoints.length === 0) return null;
+                                return (
+                                  <div key={group} style={{ marginBottom: '16px' }}>
+                                    <div style={{
+                                      fontSize: '12px',
+                                      fontWeight: '700',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em',
+                                      color: '#16a34a',
+                                      marginBottom: '8px',
+                                    }}>
+                                      {group}
+                                    </div>
+                                    <div style={styles.resultMetrics}>
+                                      {groupEndpoints.map(([name, data]) => {
+                                        const isClassification = data.type === 'classification';
+                                        const displayValue = isClassification
+                                          ? `${(data.value * 100).toFixed(1)}%`
+                                          : data.value.toFixed(3);
+                                        const barWidth = isClassification
+                                          ? `${(data.value * 100).toFixed(0)}%`
+                                          : '50%';
+                                        const barColor = data.group === 'toxicity' && data.value > 0.5
+                                          ? '#dc2626'
+                                          : data.value > 0.7 && isClassification
+                                            ? '#eab308'
+                                            : '#16a34a';
+                                        return (
+                                          <div key={name} style={styles.metricCard}>
+                                            <span style={styles.metricLabel}>{data.display_name}</span>
+                                            <span style={styles.metricValue}>
+                                              {displayValue}
+                                              {data.unit && data.unit !== 'probability' && (
+                                                <span style={{ fontSize: '11px', opacity: 0.6, marginLeft: '4px' }}>
+                                                  {data.unit}
+                                                </span>
+                                              )}
+                                            </span>
+                                            <div style={styles.progressBar}>
+                                              <div style={{ ...styles.progressFill, width: barWidth, backgroundColor: barColor }}></div>
+                                            </div>
+                                            <span style={{
+                                              fontSize: '10px',
+                                              color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+                                              marginTop: '4px',
+                                            }}>
+                                              ± {data.std.toFixed(4)}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+
+                          {/* AI Interpretation */}
+                          {request.results.interpretation && (
+                            <div style={styles.resultInsight}>
+                              <span style={styles.insightLabel}>AI Interpretation</span>
+                              <p style={styles.insightText}>
+                                {request.results.interpretation.executive_summary}
+                              </p>
+
+                              {request.results.interpretation.high_risk_flags &&
+                                request.results.interpretation.high_risk_flags.length > 0 && (
+                                  <div style={{ marginTop: '12px' }}>
+                                    <span style={{
+                                      fontSize: '12px',
+                                      fontWeight: '600',
+                                      color: '#dc2626',
+                                    }}>High Risk Flags:</span>
+                                    <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                                      {request.results.interpretation.high_risk_flags.map((flag, i) => (
+                                        <li key={i} style={{
+                                          fontSize: '13px',
+                                          color: theme === 'dark' ? '#fca5a5' : '#dc2626',
+                                          marginBottom: '4px',
+                                        }}>{flag}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                              {request.results.interpretation.recommended_next_steps &&
+                                request.results.interpretation.recommended_next_steps.length > 0 && (
+                                  <div style={{ marginTop: '12px' }}>
+                                    <span style={{
+                                      fontSize: '12px',
+                                      fontWeight: '600',
+                                      color: theme === 'dark' ? '#e5e7eb' : '#374151',
+                                    }}>Recommended Next Steps:</span>
+                                    <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                                      {request.results.interpretation.recommended_next_steps.map((step, i) => (
+                                        <li key={i} style={{
+                                          fontSize: '13px',
+                                          color: theme === 'dark' ? '#d1d5db' : '#4b5563',
+                                          marginBottom: '4px',
+                                        }}>{step}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                              {request.results.interpretation.disclaimer && (
+                                <p style={{
+                                  fontSize: '11px',
+                                  color: theme === 'dark' ? '#6b7280' : '#9ca3af',
+                                  fontStyle: 'italic',
+                                  marginTop: '12px',
+                                }}>
+                                  {request.results.interpretation.disclaimer}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* AI Overview Section */}
+                          {request.results.interpretation && request.results.interpretation.ai_overview && (
+                            <div style={{
+                              marginTop: '24px',
+                              borderTop: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`,
+                              paddingTop: '20px',
+                            }}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                marginBottom: '14px',
+                              }}>
+                                <div style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93L12 22"></path>
+                                    <path d="M12 2a4 4 0 0 0-4 4c0 1.95 1.4 3.58 3.25 3.93"></path>
+                                    <path d="M8.56 13a8 8 0 0 0-2.3 3.5"></path>
+                                    <path d="M15.44 13a8 8 0 0 1 2.3 3.5"></path>
+                                  </svg>
+                                </div>
+                                <span style={{
+                                  fontSize: '15px',
+                                  fontWeight: '700',
+                                  color: theme === 'dark' ? '#e5e7eb' : '#1f2937',
+                                }}>AI Overview</span>
+                              </div>
+                              <div style={{
+                                padding: '16px 20px',
+                                backgroundColor: theme === 'dark' ? 'rgba(139, 92, 246, 0.06)' : '#f5f3ff',
+                                border: `1px solid ${theme === 'dark' ? 'rgba(139, 92, 246, 0.2)' : '#e9d5ff'}`,
+                                borderRadius: '12px',
+                                fontSize: '13.5px',
+                                lineHeight: '1.7',
+                                color: theme === 'dark' ? '#d1d5db' : '#374151',
+                              }}>
+                                {request.results.interpretation.ai_overview}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Download Results Section */}
+                          <div style={{
+                            marginTop: '24px',
+                            borderTop: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`,
+                            paddingTop: '20px',
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              marginBottom: '16px',
+                            }}>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                              </svg>
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: theme === 'dark' ? '#e5e7eb' : '#1f2937',
+                              }}>Download Results</span>
+                            </div>
+
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 1fr',
+                              gap: '12px',
+                              marginBottom: '16px',
+                            }}>
+                              {/* Word Report Download Card */}
+                              <button
+                                id={`download-report-${request.id}`}
+                                onClick={() => {
+                                  const tk = localStorage.getItem('token');
+                                  fetch(`/api/predict/${request.results.request_id}/report`, {
+                                    headers: tk ? { 'Authorization': `Bearer ${tk}` } : {},
+                                  })
+                                    .then(res => {
+                                      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+                                      return res.blob();
+                                    })
+                                    .then(blob => {
+                                      const url = URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = `analysis_report_${request.results.request_id.slice(0, 8)}.docx`;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      a.remove();
+                                      URL.revokeObjectURL(url);
+                                    })
+                                    .catch(err => {
+                                      console.error('Report download failed:', err);
+                                      alert('Download failed. Please re-run the analysis and try again.');
+                                    });
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '14px',
+                                  padding: '16px 18px',
+                                  backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.08)' : '#f0fdf4',
+                                  border: `1.5px solid ${theme === 'dark' ? 'rgba(22, 163, 74, 0.3)' : '#bbf7d0'}`,
+                                  borderRadius: '12px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                  textAlign: 'left',
+                                  fontFamily: "'DM Sans', sans-serif",
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.transform = 'translateY(-2px)';
+                                  e.currentTarget.style.boxShadow = theme === 'dark'
+                                    ? '0 8px 24px rgba(22, 163, 74, 0.15)'
+                                    : '0 8px 24px rgba(22, 163, 74, 0.12)';
+                                  e.currentTarget.style.borderColor = '#16a34a';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                  e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(22, 163, 74, 0.3)' : '#bbf7d0';
+                                }}
+                              >
+                                <div style={{
+                                  width: '44px',
+                                  height: '44px',
+                                  borderRadius: '10px',
+                                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}>
+                                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                  </svg>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    color: theme === 'dark' ? '#e5e7eb' : '#1f2937',
+                                    marginBottom: '3px',
+                                  }}>Analysis Report</div>
+                                  <div style={{
+                                    fontSize: '11px',
+                                    color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+                                    lineHeight: '1.4',
+                                  }}>GPT interpretation with insights & recommendations</div>
+                                </div>
+                                <div style={{
+                                  fontSize: '10px',
+                                  fontWeight: '700',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.2)' : '#dcfce7',
+                                  color: '#16a34a',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  flexShrink: 0,
+                                }}>.DOCX</div>
+                              </button>
+
+                              {/* CSV Data Download Card */}
+                              <button
+                                id={`download-csv-${request.id}`}
+                                onClick={() => {
+                                  const tkCsv = localStorage.getItem('token');
+                                  fetch(`/api/predict/${request.results.request_id}/csv`, {
+                                    headers: tkCsv ? { 'Authorization': `Bearer ${tkCsv}` } : {},
+                                  })
+                                    .then(res => {
+                                      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+                                      return res.blob();
+                                    })
+                                    .then(blob => {
+                                      const url = URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = `admet_predictions_${request.results.request_id.slice(0, 8)}.csv`;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      a.remove();
+                                      URL.revokeObjectURL(url);
+                                    })
+                                    .catch(err => {
+                                      console.error('CSV download failed:', err);
+                                      alert('Download failed. Please re-run the analysis and try again.');
+                                    });
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '14px',
+                                  padding: '16px 18px',
+                                  backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.08)' : '#eff6ff',
+                                  border: `1.5px solid ${theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe'}`,
+                                  borderRadius: '12px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                  textAlign: 'left',
+                                  fontFamily: "'DM Sans', sans-serif",
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.transform = 'translateY(-2px)';
+                                  e.currentTarget.style.boxShadow = theme === 'dark'
+                                    ? '0 8px 24px rgba(59, 130, 246, 0.15)'
+                                    : '0 8px 24px rgba(59, 130, 246, 0.12)';
+                                  e.currentTarget.style.borderColor = '#3b82f6';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                  e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe';
+                                }}
+                              >
+                                <div style={{
+                                  width: '44px',
+                                  height: '44px',
+                                  borderRadius: '10px',
+                                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}>
+                                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="8" y1="13" x2="16" y2="13"></line>
+                                    <line x1="8" y1="17" x2="12" y2="17"></line>
+                                  </svg>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    color: theme === 'dark' ? '#e5e7eb' : '#1f2937',
+                                    marginBottom: '3px',
+                                  }}>ADMET Predictions Data</div>
+                                  <div style={{
+                                    fontSize: '11px',
+                                    color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+                                    lineHeight: '1.4',
+                                  }}>ML model raw predictions & uncertainty values</div>
+                                </div>
+                                <div style={{
+                                  fontSize: '10px',
+                                  fontWeight: '700',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
+                                  color: '#3b82f6',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  flexShrink: 0,
+                                }}>.CSV</div>
+                              </button>
+                            </div>
+
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              fontSize: '12px',
+                              color: theme === 'dark' ? '#6b7280' : '#9ca3af',
+                            }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                              </svg>
+                              Analysis completed in {request.results.latency_seconds}s
+                            </div>
+                          </div>
+                        </div>
+                      ) : request.status === 'error' ? (
+                        <div style={styles.resultInsight}>
+                          <span style={{ ...styles.insightLabel, color: '#dc2626' }}>Analysis Error</span>
+                          <p style={styles.insightText}>
+                            {request.error || 'An unexpected error occurred. Please try again.'}
+                          </p>
+                        </div>
+                      ) : (
+                        <div style={styles.resultMetrics}>
+                          <div style={styles.metricCard}>
+                            <span style={styles.metricLabel}>Status</span>
+                            <span style={styles.metricValue}>Processing...</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1128,7 +1621,7 @@ const App = () => {
 
       {/* Footer */}
       <footer style={styles.footer}>
-        <p style={styles.footerText}>MoleculeAI Drug Discovery Platform • Frontend Preview</p>
+        <p style={styles.footerText}>MoleculeAI Drug Discovery Platform • AI-Powered ADMET Analysis</p>
       </footer>
 
     </div>
