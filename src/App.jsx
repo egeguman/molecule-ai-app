@@ -1476,7 +1476,7 @@ const App = () => {
                                     fontSize: '11px',
                                     color: theme === 'dark' ? '#9ca3af' : '#6b7280',
                                     lineHeight: '1.4',
-                                  }}>GPT interpretation with insights & recommendations</div>
+                                  }}>AI interpretation with insights & recommendations</div>
                                 </div>
                                 <div style={{
                                   fontSize: '10px',
